@@ -5,9 +5,7 @@ import serial
 import time
 import pyudev
 
-# ==========================
-# 🖧 Detecta Porta USB STM32
-# ==========================
+
 def find_stm32_port():
     context = pyudev.Context()
     for device in context.list_devices(subsystem='tty'):
@@ -15,33 +13,27 @@ def find_stm32_port():
             vendor_id = device.get('ID_VENDOR_ID')
             model_id = device.get('ID_MODEL_ID')
 
-            # Confere se é o STMicroelectronics Virtual COM Port (ID 0483:5740)
+
             if vendor_id == '0483' and model_id == '5740':
-                return device.device_node  # Retorna algo como /dev/ttyACM0
+                return device.device_node  
 
     raise RuntimeError("STM32 Virtual COM Port não encontrado!")
 
-# =====================
-# 🎮 Controle Joystick
-# =====================
+
 class JoystickControl:
     def __init__(self):
         """Inicializa o controle do joystick."""
-        self.robot_id = 0  # Começa no ID 0
+        self.robot_id = 0  
         self.joystick = None
         self.axis = {}
-        self.last_x_button_state = False  # Estado anterior do botão X
+        self.last_x_button_state = False  
 
-        # Mapeamento dos eixos e botões do joystick
-        self.AXIS_LEFT_STICK_X = 0  # Girar esquerda/direita
-        self.AXIS_LEFT_STICK_Y = 1  # Ir para frente/trás
-        self.BUTTON_X = 0  # Botão X (PS4/PS5)
-
-        # Configuração da velocidade máxima
-        self.MAX_SPEED = 1.0  # Velocidade máxima do robô
-
-        # Detecta e conecta na porta STM32 automaticamente
+        self.AXIS_LEFT_STICK_X = 0  
+        self.AXIS_LEFT_STICK_Y = 1  
+        self.BUTTON_X = 0  
+        self.MAX_SPEED = 1.0  
         self.ser = serial.Serial(find_stm32_port(), 115200, timeout=1)
+
         print(f"✅ Conectado ao STM32 na porta {self.ser.port}")
 
     def setup(self):
@@ -67,31 +59,28 @@ class JoystickControl:
 
     def process_input(self):
         """Lê e processa eventos do joystick."""
-        pygame.event.pump()  # Atualiza os eventos do joystick
+        pygame.event.pump() 
 
-        # Captura os valores dos eixos do joystick esquerdo
-        y = -self.joystick.get_axis(self.AXIS_LEFT_STICK_Y)  # Frente/Trás
-        x = self.joystick.get_axis(self.AXIS_LEFT_STICK_X)   # Rotação
+        y = -self.joystick.get_axis(self.AXIS_LEFT_STICK_Y)  
+        x = self.joystick.get_axis(self.AXIS_LEFT_STICK_X)   
 
-        # Aplicar um limite mínimo para evitar ruído (zona morta)
         if abs(y) < 0.1:
             y = 0
         if abs(x) < 0.1:
             x = 0
 
-        # Cálculo das velocidades de cada roda
-        vl = (y + x) * self.MAX_SPEED  # Roda esquerda
-        vr = (y - x) * self.MAX_SPEED  # Roda direita
 
-        # Verificar se o botão X foi pressionado para trocar o ID do robô
+        vl = (y + x) * self.MAX_SPEED  
+        vr = (y - x) * self.MAX_SPEED  
+
         x_button_state = self.joystick.get_button(self.BUTTON_X)
         if x_button_state and not self.last_x_button_state:
-            self.robot_id = (self.robot_id + 1) % 4  # Alterna entre 0, 1, 2 e 3
+            self.robot_id = (self.robot_id + 1) % 4 
             print(f"🚀 Robô alterado para ID: {self.robot_id}")
 
-        self.last_x_button_state = x_button_state  # Atualiza o estado do botão
+        self.last_x_button_state = x_button_state 
 
-        self.send_data(vl, vr)  # Enviar os dados para o STM32
+        self.send_data(vl, vr)  
 
     def run(self):
         """Loop principal do controle do joystick."""
@@ -104,7 +93,6 @@ class JoystickControl:
             pygame.quit()
             self.ser.close()
 
-# Executar
 if __name__ == "__main__":
     joystick = JoystickControl()
     joystick.setup()
